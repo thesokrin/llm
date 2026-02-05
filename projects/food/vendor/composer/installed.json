@@ -1,0 +1,61 @@
+{
+    "packages": [
+        {
+            "name": "sanmai/usb-scale-reader",
+            "version": "v1.0.2",
+            "version_normalized": "1.0.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/sanmai/usb-scale-reader.git",
+                "reference": "b1e2f019a32491aaa4dc444345849534acad252d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/sanmai/usb-scale-reader/zipball/b1e2f019a32491aaa4dc444345849534acad252d",
+                "reference": "b1e2f019a32491aaa4dc444345849534acad252d",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^2.13",
+                "phpunit/phpunit": "^6.5 || ^7.4 || ^9"
+            },
+            "time": "2021-01-06T05:16:51+00:00",
+            "type": "library",
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "USBScaleReader\\": "src/USBScaleReader"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alexey Kopytko",
+                    "email": "alexey@kopytko.com",
+                    "homepage": "http://www.alexeykopytko.com/"
+                }
+            ],
+            "description": "Standard USB scale reader library",
+            "homepage": "https://github.com/sanmai/usb-scale-reader",
+            "support": {
+                "issues": "https://github.com/sanmai/usb-scale-reader/issues",
+                "source": "https://github.com/sanmai/usb-scale-reader/tree/v1.0.2"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/sanmai",
+                    "type": "github"
+                }
+            ],
+            "install-path": "../sanmai/usb-scale-reader"
+        }
+    ],
+    "dev": true,
+    "dev-package-names": []
+}

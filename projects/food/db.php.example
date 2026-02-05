@@ -1,0 +1,11 @@
+<?php
+// Example DB config (DO NOT COMMIT REAL CREDENTIALS)
+// Copy to db.php and fill in locally.
+
+return [
+  'host' => '127.0.0.1',
+  'port' => 3306,
+  'name' => 'food',
+  'user' => 'food_user',
+  'pass' => 'CHANGE_ME',
+];
