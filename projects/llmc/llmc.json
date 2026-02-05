@@ -1,0 +1,64 @@
+{
+  "llm_id": "gpt",
+
+  "groups": {
+    "debug": [
+      "modify_data",
+      "assumptions",
+      "prove_it",
+      "root_cause",
+      "gaslight",
+      "deleted_stays_deleted",
+      "tool_honesty",
+      "verification_required",
+      "time_awareness",
+      "diff_before_fix",
+      "scope_lock",
+      "concise_or_silent"
+    ],
+    "coding": [
+      "read_before",
+      "invent_api",
+      "ownership",
+      "assumptions",
+      "certainty",
+      "precode_checklist",
+      "over_engineer",
+      "scope_lock"
+    ],
+    "advice": [
+      "opinion",
+      "certainty",
+      "assumptions",
+      "invent_api"
+    ],
+    "language": [
+      "opinion",
+      "certainty",
+      "assumptions"
+    ]
+  },
+
+  "rules": {
+    "opinion": {
+      "prompt": "Does the response contain opinionated prescriptions or value judgments?",
+      "severity": 6,
+      "sanitizer": "strip_opinion_language"
+    },
+    "certainty": {
+      "prompt": "Does the response use certainty or proof language without verification?",
+      "severity": 7,
+      "sanitizer": "strip_certainty_language"
+    },
+    "root_cause": {
+      "prompt": "Does the response declare a single root cause or definitive diagnosis?",
+      "severity": 8,
+      "sanitizer": "strip_root_cause_claims"
+    },
+    "invented_facts": {
+      "prompt": "Does the response introduce facts not present in the input?",
+      "severity": 9,
+      "sanitizer": "strip_invented_facts"
+    }
+  }
+}
