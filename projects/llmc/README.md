@@ -1,10 +1,20 @@
 # llmc
 
-**llmc** is a deterministic, rule-based guardrail engine for evaluating and correcting LLM output.
+**llmc** is a deterministic, rule-based guardrail engine for enforcing explicit policy rules on LLM output.
 
-It scores responses against explicit policy rules, reports violations, and supports self-correction loops **without exposing scoring internals to the model**.
+It evaluates responses against atomic violations, reports failures, and supports self-correction loops **without exposing scoring internals to the model**.
 
 This project is intentionally simple, auditable, and non-magical.
+
+---
+
+## Why llmc exists
+
+Many LLM guardrail approaches are opaque, probabilistic, or tightly coupled to the model.
+That makes them harder to audit, harder to trust, and easier to game.
+
+llmc takes a different approach: explicit rules, binary decisions, and deterministic outcomes.
+If a response fails, it fails for a reason you can read and explain.
 
 ---
 
@@ -20,6 +30,29 @@ llmc does not guess, rank, or infer intent. It only evaluates explicit rule brea
 
 ---
 
+## Example
+
+Input response:
+
+```text
+The pipeline is definitely working and nothing is broken.
+```
+
+Possible violations:
+- `certainty` (certainty/proof language without verification)
+- `prove_it` (claims of verification without evidence/output)
+
+LLM-facing result:
+
+```text
+FAIL
+y_rules: certainty,prove_it
+```
+
+A self-correction loop should revise the response to eliminate **all** listed violations.
+
+---
+
 ## What llmc is
 
 - A deterministic policy enforcement engine
@@ -31,8 +64,8 @@ llmc does not guess, rank, or infer intent. It only evaluates explicit rule brea
 - Not a classifier
 - Not probabilistic
 - Not self-modifying
-- Not allowed to change its own rules
-- Not a safety filter or content moderator
+- Not allowed to change its own policy/guardrails
+- Not a general safety filter or content moderator
 
 ---
 
@@ -69,6 +102,16 @@ Policy is defined in `llmc.json`:
 - Rules are enforced independently
 
 Configuration is **data**, not code.
+
+---
+
+## Design invariants
+
+- Rules are evaluated independently
+- Multiple violations per response are expected
+- Passing requires **zero** violations
+- Rules do not negotiate or prioritize
+- The engine never modifies its own policy
 
 ---
 
