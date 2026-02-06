@@ -331,6 +331,137 @@ function record_attempt(array &$s, string $model, string $session_ts, string $tu
 
 /* ---------------- CLI ---------------- */
 
+// --- llmc.json helpers (CLI batch questions / answer-string scoring) ---
+
+function llmc_json_path(): string {
+    return __DIR__ . '/llmc.json';
+}
+
+function llmc_json_load(): array {
+    $path = llmc_json_path();
+    if (!is_file($path)) throw new RuntimeException("Missing llmc.json at $path");
+    $raw = file_get_contents($path);
+    $cfg = is_string($raw) ? json_decode($raw, true) : null;
+    if (!is_array($cfg) || !isset($cfg['groups'], $cfg['rules'])) throw new RuntimeException('Invalid llmc.json');
+    if (!is_array($cfg['groups']) || !is_array($cfg['rules'])) throw new RuntimeException('Invalid llmc.json');
+    return $cfg;
+}
+
+/**
+ * Returns ordered unique rule ids for selected sets.
+ * Order is preserved as they appear in each group array.
+ */
+function llmc_json_rule_order(array $cfg, array $sets): array {
+    $out = [];
+    $seen = [];
+    foreach ($sets as $set) {
+        $set = (string)$set;
+        $list = $cfg['groups'][$set] ?? null;
+        if (!is_array($list)) continue;
+        foreach ($list as $rid) {
+            if (!is_string($rid) || $rid === '') continue;
+            if (isset($seen[$rid])) continue;
+            $seen[$rid] = true;
+            $out[] = $rid;
+        }
+    }
+    return $out;
+}
+
+/** Returns [rid => prompt] in the order of llmc_json_rule_order(). */
+function llmc_json_prompts_for_sets(array $cfg, array $sets): array {
+    $rids = llmc_json_rule_order($cfg, $sets);
+    $out = [];
+    foreach ($rids as $rid) {
+        $r = $cfg['rules'][$rid] ?? null;
+        $prompt = (is_array($r) && isset($r['prompt']) && is_string($r['prompt'])) ? $r['prompt'] : ("Rule {$rid}");
+        $out[$rid] = $prompt;
+    }
+    return $out;
+}
+
+/**
+ * Parse answers like "YYN.." into [rid => 'Y'|'N'] aligned to provided rid order.
+ * Non-YN characters are ignored. Missing answers default to 'N'.
+ */
+function llmc_json_answers(array $rid_order, string $answers): array {
+    $answers = strtoupper(trim($answers));
+    $answers = preg_replace('/[^YN]/', '', $answers) ?? '';
+    $out = [];
+    $n = count($rid_order);
+    for ($i = 0; $i < $n; $i++) {
+        $rid = (string)$rid_order[$i];
+        $ch  = $answers[$i] ?? 'N';
+        $out[$rid] = ($ch === 'Y') ? 'Y' : 'N';
+    }
+    return $out;
+}
+
+/**
+ * Compute [x,ux,ix] from llmc.json given sets + answers.
+ * - x: sum severity for Y rules
+ * - ux: same as x (union mode bookkeeping; kept for shape)
+ * - ix: sum severity for Y rules that belong to ALL selected sets
+ */
+function llmc_json_score(array $cfg, array $sets, array $answers): array {
+    $sets = array_values(array_filter(array_map('strval', $sets), 'strlen'));
+    $setCount = count($sets);
+
+    // owner counts per rule (in how many selected sets does this rule appear?)
+    $owners = [];
+    foreach ($sets as $set) {
+        $list = $cfg['groups'][(string)$set] ?? null;
+        if (!is_array($list)) continue;
+        foreach ($list as $rid) {
+            if (!is_string($rid) || $rid === '') continue;
+            $owners[$rid] = ($owners[$rid] ?? 0) + 1;
+        }
+    }
+
+    $x = 0; $ux = 0; $ix = 0;
+    foreach ($answers as $rid => $yn) {
+        if ($yn !== 'Y') continue;
+        $r = $cfg['rules'][$rid] ?? null;
+        $sev = (is_array($r) && isset($r['severity'])) ? (int)$r['severity'] : 0;
+        $x  += $sev;
+        $ux += $sev;
+        if ($setCount > 0 && (($owners[$rid] ?? 0) == $setCount)) $ix += $sev;
+    }
+
+    return [$x,$ux,$ix];
+}
+
+
+
+
+/**
+ * Parse CLI args into key/value options.
+ * Supports: --key=value and --key value
+ * Skips argv[0] (script) and argv[1] (cmd).
+ */
+function cli_kv_opts(array $argv): array {
+    $out = [];
+    $n = count($argv);
+    for ($i = 2; $i < $n; $i++) {
+        $a = (string)$argv[$i];
+        if (!str_starts_with($a, '--')) continue;
+        $a = substr($a, 2);
+        if ($a === '') continue;
+        if (strpos($a, '=') !== false) {
+            [$k, $v] = explode('=', $a, 2);
+            $out[(string)$k] = (string)$v;
+            continue;
+        }
+        $k = $a;
+        $v = '';
+        if ($i + 1 < $n && !str_starts_with((string)$argv[$i+1], '--')) {
+            $v = (string)$argv[$i+1];
+            $i++;
+        }
+        $out[(string)$k] = (string)$v;
+    }
+    return $out;
+}
 function cli_main(array $argv): int {
     $cmd = $argv[1] ?? 'run';
 
@@ -353,7 +484,80 @@ function cli_main(array $argv): int {
             return 0;
         }
 
-        $opts = getopt('', ['sets:', 'mode::']);
+        if ($cmd === 'questions') {
+            $kv = cli_kv_opts($argv);
+            if (!isset($kv['sets']) || trim((string)$kv['sets']) === '') {
+                fwrite(STDERR, "Usage: php llmcs.php questions --sets=debug,coding\n");
+                return 2;
+            }
+            $sets = array_values(array_filter(array_map('trim', explode(',', (string)$kv['sets'])), 'strlen'));
+            $cfg = llmc_json_load();
+            $prompts = llmc_json_prompts_for_sets($cfg, $sets);
+            $i = 1;
+            fwrite(STDOUT, "NOTE: Penalty score (golf). Answer Y only for violations. Lower is better (0=perfect).\n\n");
+            foreach ($prompts as $rid => $prompt) {
+                fwrite(STDOUT, sprintf("%02d %s\t%s\n", $i++, $rid, $prompt));
+            }
+            fwrite(STDOUT, "COUNT=".(string)count($prompts)."\n");
+            return 0;
+        }
+
+        if ($cmd === 'score') {
+            $kv = cli_kv_opts($argv);
+            if (!isset($kv['sets']) || trim((string)$kv['sets']) === '' || !isset($kv['answers'])) {
+                fwrite(STDERR, "Usage: echo text | php llmcs.php score --sets=debug,coding [--mode=union|intersection] --answers=YYN...\n");
+                return 2;
+            }
+
+            $mode = (string)($kv['mode'] ?? 'union');
+            if ($mode !== 'union' && $mode !== 'intersection') $mode = 'union';
+
+            $sets = array_values(array_filter(array_map('trim', explode(',', (string)$kv['sets'])), 'strlen'));
+            $text = trim(stream_get_contents(STDIN) ?: '');
+
+            $cfg = llmc_json_load();
+            $rid_order = llmc_json_rule_order($cfg, $sets);
+            $answers = llmc_json_answers($rid_order, (string)$kv['answers']);
+
+            [$x,$ux,$ix] = llmc_json_score($cfg, $sets, $answers);
+
+            $y_rules = [];
+            foreach ($rid_order as $rid) {
+                if (($answers[(string)$rid] ?? 'N') === 'Y') $y_rules[] = (string)$rid;
+            }
+
+            $total = $x + $ux + $ix;
+
+            $report = (string)($kv['report'] ?? 'llm');
+            if ($report !== 'llm' && $report !== 'audit') $report = 'llm';
+            $include_prompts = isset($kv['include-prompts']) || isset($kv['include_prompts']);
+
+            if ($report === 'llm') {
+                $ok = ($x === 0);
+                echo ($ok ? "PASS" : "FAIL") . "\n";
+                echo "y_rules:";
+                if ($y_rules) echo " " . implode(',', $y_rules);
+                echo "\n";
+
+                if ($include_prompts && $y_rules) {
+                    // Print prompts for triggered rules to guide self-correction without showing numeric weights.
+                    foreach ($y_rules as $rid) {
+                        $r = $cfg['rules'][(string)$rid] ?? null;
+                        $prompt = (is_array($r) && isset($r['prompt']) && is_string($r['prompt'])) ? $r['prompt'] : ("Rule {$rid}");
+                        echo "- {$rid}: {$prompt}\n";
+                    }
+                }
+
+                return 0;
+            }
+
+            // audit report (numbers)
+            echo $text . "\n\n[i]" . $x . ',' . $ux . ',' . $ix . ',' . $total . "\n";
+            echo "[y_rules]" . ($y_rules ? (' ' . implode(',', $y_rules)) : '') . "\n";
+
+            return 0;
+        }
+$opts = getopt('', ['sets:', 'mode::']);
         if (!isset($opts['sets'])) {
             fwrite(STDERR, "Usage: echo text | php llmcs.php run --sets=debug,coding [--mode=union|intersection]\n");
             return 2;
