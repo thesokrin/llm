@@ -35,6 +35,18 @@
             "opinion",
             "certainty",
             "assumptions"
+        ],
+        "reasoning": [
+            "unjustified_inference",
+            "overgeneralization",
+            "false_binary",
+            "causal_leap"
+        ],
+        "scope_control_plus": [
+            "scope_lock",
+            "answers_unasked_question",
+            "adds_irrelevant_context",
+            "excessive_speculation"
         ]
     },
     "rules": {
@@ -137,6 +149,41 @@
             "prompt": "Did the response over-engineer when a simpler explicit approach would do?",
             "severity": 5,
             "sanitizer": "strip_overengineering"
+        },
+        "unjustified_inference": {
+            "prompt": "Does the response draw conclusions not directly supported by the provided information?",
+            "severity": 7,
+            "sanitizer": "strip_unjustified_inference"
+        },
+        "overgeneralization": {
+            "prompt": "Does the response generalize beyond the scope of the user's input or evidence?",
+            "severity": 6,
+            "sanitizer": "strip_overgeneralization"
+        },
+        "false_binary": {
+            "prompt": "Does the response present the situation as only two options when reasonable alternatives exist?",
+            "severity": 5,
+            "sanitizer": "strip_false_binary"
+        },
+        "causal_leap": {
+            "prompt": "Does the response assert causation or a causal mechanism without adequate support?",
+            "severity": 7,
+            "sanitizer": "strip_causal_leap"
+        },
+        "answers_unasked_question": {
+            "prompt": "Does the response primarily answer a different question than what the user asked?",
+            "severity": 6,
+            "sanitizer": "strip_answers_unasked_question"
+        },
+        "adds_irrelevant_context": {
+            "prompt": "Does the response introduce irrelevant context/details that don't help answer the user's request?",
+            "severity": 5,
+            "sanitizer": "strip_irrelevant_context"
+        },
+        "excessive_speculation": {
+            "prompt": "Does the response speculate beyond what the available information supports without clearly labeling it as speculation?",
+            "severity": 7,
+            "sanitizer": "strip_excessive_speculation"
         }
     }
 }
