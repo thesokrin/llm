@@ -1,0 +1,47 @@
+# =========================
+# Dependencies
+# =========================
+vendor/
+composer.lock
+
+# =========================
+# Secrets / config (NEVER COMMIT)
+# =========================
+.env
+.env.*
+!.env.example
+
+db.php
+DB.php
+**/db.php
+**/DB.php
+
+.htaccess
+.htpasswd
+
+# =========================
+# Editor / backup junk
+# =========================
+*.bak
+
+.vscode/
+.idea/
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.pyc
+
+# =========================
+# Logs / runtime junk
+# =========================
+*.log
+*.tmp
+
+# =========================
+# OS noise
+# =========================
+.DS_Store
+Thumbs.db
+**/vendor/

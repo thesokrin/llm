@@ -1,0 +1,5 @@
+{
+    "require": {
+        "sanmai/usb-scale-reader": "^1.0"
+    }
+}
